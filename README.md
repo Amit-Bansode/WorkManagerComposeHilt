@@ -5,22 +5,24 @@ A sample Android application demonstrating the integration of **Jetpack WorkMana
 ## Tech Stack
 - **Jetpack Compose**: Modern UI toolkit.
 - **Hilt**: Dependency Injection (including Worker injection).
-- **WorkManager**: Background task scheduling.
+- **WorkManager**: Background task scheduling (One-time, Periodic, and Expedited).
 - **Retrofit & OkHttp**: For network communication.
 - **KSP**: Kotlin Symbol Processing for faster builds.
 
 ## Features
 - **Hilt-Injected Worker**: A `CustomWorker` that receives a `DemoService` via Hilt.
+- **Expedited Work**: `ExpediteCustomWorker` demonstrates how to run immediate tasks with foreground notifications.
+- **Periodic Work**: Shows how to schedule repeating tasks with unique names.
 - **Custom Configuration**: Manual WorkManager initialization in `MainApplication` using `HiltWorkerFactory`.
-- **Background Networking**: Performs a network request to JSONPlaceholder in the background.
+- **Android 14+ Support**: Includes required Foreground Service types and runtime notification permissions.
 
 ## Key Implementation Details
 
 ### Worker Injection
-The `CustomWorker` is annotated with `@HiltWorker` and uses `@AssistedInject`. Hilt handles the injection of regular dependencies (`DemoService`), while WorkManager provides the `@Assisted` parameters (`Context` and `WorkerParameters`).
+The workers are annotated with `@HiltWorker` and use `@AssistedInject`. Hilt handles the injection of regular dependencies (like `DemoService`), while WorkManager provides the `@Assisted` parameters (`Context` and `WorkerParameters`).
 
 ### Application Class
-`MainApplication` implements `Configuration.Provider` to provide the `HiltWorkerFactory` to WorkManager:
+`MainApplication` implements `Configuration.Provider`. Note the use of a property getter for `workManagerConfiguration` to ensure `workerFactory` is initialized by Hilt before being accessed:
 
 ```kotlin
 @HiltAndroidApp
@@ -34,18 +36,19 @@ class MainApplication : Application(), Configuration.Provider {
 }
 ```
 
-### AndroidManifest.xml
-The default `InitializationProvider` for WorkManager is removed to allow for the custom configuration in `MainApplication`:
+### Foreground Service & Android 14 (API 34+)
+To support Android 14 and higher, the app:
+1. Declares `FOREGROUND_SERVICE_DATA_SYNC` in `AndroidManifest.xml`.
+2. Specifies the `foregroundServiceType` in the `SystemForegroundService` declaration.
+3. Requests `POST_NOTIFICATIONS` permission at runtime.
+4. Uses `ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC` in `getForegroundInfo()`.
 
-```xml
-<provider
-    android:name="androidx.startup.InitializationProvider"
-    android:authorities="${applicationId}.androidx-startup"
-    tools:node="remove" />
-```
+### Suspending Tasks in Compose
+Suspending functions like `delay` or WorkManager cancellation inside the UI are wrapped in `LaunchedEffect` to ensure they run in the correct coroutine scope.
 
 ## Getting Started
 1. Clone the repository.
 2. Open the project in Android Studio.
 3. Build and run the app.
-4. Check the Logcat (tag "TAG") to see the background work execution after a 10-second delay.
+4. Grant the notification permission when prompted.
+5. Observe the background task status in Logcat (tag "TAG") and the persistent notification for expedited work.
